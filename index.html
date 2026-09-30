@@ -147,11 +147,21 @@
       const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
       const parsed = new URL(withProtocol);
       if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an http or https address.');
+      if (location.protocol === 'https:' && parsed.protocol === 'http:') parsed.protocol = 'https:';
       return parsed.href;
+    }
+    function requiresFullTab(url) {
+      const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+      return ['discord.com','discord.gg','discordapp.com'].some(domain => host === domain || host.endsWith(`.${domain}`));
     }
     function showToast(message) { toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2400); }
     function loadSite() {
-      try { frame.removeAttribute('srcdoc'); frame.src = normalizeUrl(urlInput.value); showToast('Loading website preview'); }
+      try {
+        const target = normalizeUrl(urlInput.value);
+        urlInput.value = target;
+        if (requiresFullTab(target)) { window.open(target, '_blank', 'noopener,noreferrer'); showToast('This site blocks iframe previews, so it opened in a new tab'); return; }
+        frame.removeAttribute('srcdoc'); frame.src = target; showToast('Loading website preview');
+      }
       catch (error) { showToast(error.message); urlInput.focus(); }
     }
     function setMode(nextSandboxed) {
