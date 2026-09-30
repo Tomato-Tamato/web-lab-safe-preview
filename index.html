@@ -93,7 +93,7 @@
           <button class="btn primary" id="loadBtn">Load site</button>
           <button class="btn" id="proxyBtn" title="Read-only server preview for HTTP or iframe-blocked pages">Safe proxy</button>
           <button class="btn warning" id="modeBtn" aria-pressed="false">Unsandbox</button>
-          <button class="btn" id="externalBtn" hidden>Open in new tab</button>
+          <button class="btn" id="externalBtn">Open interactive</button>
         </div>
         <div class="frame-wrap">
           <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation" allow="clipboard-read; clipboard-write" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
@@ -155,14 +155,20 @@
     }
     function requiresFullTab(url) {
       const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
-      return ['discord.com','discord.gg','discordapp.com'].some(domain => host === domain || host.endsWith(`.${domain}`));
+      return ['discord.com','discord.gg','discordapp.com','poki.com','poki.io','crazygames.com','itch.io','now.gg','newgrounds.com'].some(domain => host === domain || host.endsWith(`.${domain}`));
     }
     function showToast(message) { toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2400); }
     function loadSite() {
       try {
         const target = normalizeUrl(urlInput.value);
         urlInput.value = target;
-        if (requiresFullTab(target)) { window.open(target, '_blank', 'noopener,noreferrer'); showToast('This site blocks iframe previews, so it opened in a new tab'); return; }
+        if (requiresFullTab(target)) {
+          window.open(target, '_blank', 'noopener,noreferrer');
+          frameStatus.textContent = 'Opened in interactive tab';
+          topStatus.textContent = 'Interactive site opened separately';
+          showToast('This interactive site cannot run in an iframe, so it opened in a full tab');
+          return;
+        }
         proxyMode = false;
         setMode(true, false);
         frame.removeAttribute('srcdoc'); frame.src = target; showToast('Loading website preview');
@@ -173,6 +179,13 @@
       try {
         const target = normalizeUrl(urlInput.value, false);
         urlInput.value = target;
+        if (requiresFullTab(target)) {
+          window.open(target, '_blank', 'noopener,noreferrer');
+          frameStatus.textContent = 'Opened in interactive tab';
+          topStatus.textContent = 'Games need a full browser tab';
+          showToast('Games need scripts and storage, so this opened in an interactive tab');
+          return;
+        }
         proxyMode = true;
         sandboxed = true;
         frame.setAttribute('sandbox', 'allow-scripts');
@@ -183,7 +196,7 @@
         frameStatus.textContent = 'Safe read-only proxy';
         topStatus.textContent = 'Server proxy protection active';
         badgeDot.style.background = 'var(--amber)';
-        externalBtn.hidden = true;
+        externalBtn.hidden = false;
         showToast('Loading a read-only server preview');
       } catch (error) { showToast(error.message); urlInput.focus(); }
     }
@@ -196,7 +209,7 @@
       frameStatus.textContent = sandboxed ? 'Sandboxed iframe' : 'Protection removed';
       topStatus.textContent = sandboxed ? 'Sandbox protection active' : 'Unsandboxed mode active';
       badgeDot.style.background = sandboxed ? 'var(--mint)' : 'var(--danger)';
-      externalBtn.hidden = sandboxed;
+      externalBtn.hidden = false;
       if (reload && frame.src) frame.src = frame.src;
       showToast(sandboxed ? 'Sandbox protection enabled' : 'Sandbox protection removed');
     }
