@@ -20,7 +20,12 @@ export async function onRequestGet(context) {
     if (!source.ok) return new Response('Game file not found.', { status: source.status === 404 ? 404 : 502 });
     const length = Number(source.headers.get('content-length') || 0);
     if (length > MAX_GAME_BYTES) return new Response('This game is too large to stream safely.', { status: 413 });
-    return new Response(source.body, {
+    let body = source.body;
+    if (length > 0 && length <= 1024 * 1024) {
+      const html = await source.text();
+      body = html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
+    }
+    return new Response(body, {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
@@ -28,6 +33,7 @@ export async function onRequestGet(context) {
         'content-security-policy': "default-src * data: blob:; script-src * data: blob: 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src * data: blob:; connect-src * data: blob: ws: wss:; frame-ancestors https://web-lab-safe-preview-git.pages.dev https://*.web-lab-safe-preview-git.pages.dev;",
         'cross-origin-opener-policy': 'same-origin',
         'cross-origin-embedder-policy': 'credentialless',
+        'cross-origin-resource-policy': 'cross-origin',
         'permissions-policy': 'cross-origin-isolated=(self)',
         'referrer-policy': 'no-referrer',
         'x-content-type-options': 'nosniff'
