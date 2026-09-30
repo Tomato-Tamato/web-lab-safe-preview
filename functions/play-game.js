@@ -14,9 +14,10 @@ export async function onRequestGet(context) {
   try {
     const assetPath = '/games/files/' + path.split('/').map(encodeURIComponent).join('/');
     const assetUrl = new URL(assetPath, context.request.url);
-    const source = context.env.ASSETS
-      ? await context.env.ASSETS.fetch(new Request(assetUrl, context.request))
+    let source = context.env.ASSETS
+      ? await context.env.ASSETS.fetch(assetUrl.href)
       : await fetch(assetUrl);
+    if (!source.ok && context.env.ASSETS) source = await fetch(assetUrl);
     if (!source.ok) return new Response('Game file not found.', { status: source.status === 404 ? 404 : 502 });
     const length = Number(source.headers.get('content-length') || 0);
     if (length > MAX_GAME_BYTES) return new Response('This game is too large to run on this host.', { status: 413 });
