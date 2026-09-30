@@ -125,7 +125,7 @@
         <div class="frame-wrap">
           <div class="player-controls"><button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen"><span aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button></div>
           <div class="frame-loading" id="frameLoading"><div class="loader">Loading player…</div></div>
-          <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation" allow="clipboard-read; clipboard-write" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
+          <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation" allow="clipboard-read; clipboard-write; fullscreen; gamepad; autoplay; cross-origin-isolated" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
           <div class="frame-badge"><span class="status-dot" id="badgeDot"></span><span id="frameStatus">Sandboxed iframe</span></div>
         </div>
       </section>
@@ -317,11 +317,12 @@
       gameMode = true;
       sandboxed = true;
       workspace.classList.add('game-active');
-      const gameUrl = `${location.origin}/play-game?path=${encodeURIComponent(game.path)}`;
+      const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
+      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}`;
       urlInput.value = gameUrl;
       frame.removeAttribute('srcdoc');
-      frame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
-      frame.setAttribute('allow', 'autoplay; fullscreen; gamepad');
+      frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock');
+      frame.setAttribute('allow', 'autoplay; fullscreen; gamepad; cross-origin-isolated');
       setFrameLoading(true);
       frame.src = gameUrl;
       modeBtn.textContent = 'Exit game mode';

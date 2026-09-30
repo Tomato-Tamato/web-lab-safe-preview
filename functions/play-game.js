@@ -25,7 +25,10 @@ export async function onRequestGet(context) {
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'public, max-age=3600, s-maxage=86400',
-        'content-security-policy': "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'self';",
+        'content-security-policy': "default-src * data: blob:; script-src * data: blob: 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src * data: blob:; connect-src * data: blob: ws: wss:; frame-ancestors https://web-lab-safe-preview-git.pages.dev https://*.web-lab-safe-preview-git.pages.dev;",
+        'cross-origin-opener-policy': 'same-origin',
+        'cross-origin-embedder-policy': 'credentialless',
+        'permissions-policy': 'cross-origin-isolated=(self)',
         'referrer-policy': 'no-referrer',
         'x-content-type-options': 'nosniff'
       }

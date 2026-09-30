@@ -1,0 +1,4 @@
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+  Permissions-Policy: cross-origin-isolated=(self "https://games-runtime.web-lab-safe-preview-git.pages.dev")
