@@ -175,7 +175,7 @@
         urlInput.value = target;
         proxyMode = true;
         sandboxed = true;
-        frame.setAttribute('sandbox', '');
+        frame.setAttribute('sandbox', 'allow-scripts');
         frame.removeAttribute('srcdoc');
         frame.src = `/proxy?url=${encodeURIComponent(target)}`;
         modeBtn.textContent = 'Exit proxy mode';
@@ -202,6 +202,17 @@
     }
     document.querySelector('#loadBtn').addEventListener('click', loadSite);
     proxyBtn.addEventListener('click', loadProxy);
+    window.addEventListener('message', event => {
+      if (!proxyMode || event.source !== frame.contentWindow || event.origin !== 'null') return;
+      const message = event.data;
+      if (!message || message.type !== 'web-lab-proxy-location' || typeof message.url !== 'string') return;
+      try {
+        const target = normalizeUrl(message.url, false);
+        urlInput.value = target;
+        frameStatus.textContent = 'Safe read-only proxy';
+        topStatus.textContent = 'Server proxy protection active';
+      } catch (_) {}
+    });
     urlInput.addEventListener('keydown', event => { if (event.key === 'Enter') loadSite(); });
     modeBtn.addEventListener('click', () => proxyMode ? loadSite() : (sandboxed ? dialog.showModal() : setMode(true)));
     document.querySelector('#cancelBtn').addEventListener('click', () => dialog.close());
