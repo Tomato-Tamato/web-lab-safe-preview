@@ -25,7 +25,7 @@
     main { min-height:0; display:block; }
     .workspace,.assistant { min-height:0; background:rgba(13,18,26,.9); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:0 24px 80px rgba(0,0,0,.28); }
     .workspace { display:grid; grid-template-rows:auto 1fr; }
-    .toolbar { padding:12px; display:grid; grid-template-columns:minmax(180px,1fr) auto auto auto; gap:9px; border-bottom:1px solid var(--line); }
+    .toolbar { padding:12px; display:grid; grid-template-columns:minmax(180px,1fr) auto auto auto auto; gap:9px; border-bottom:1px solid var(--line); }
     .url-wrap { display:flex; align-items:center; gap:9px; min-width:0; background:#080c12; border:1px solid #303b4c; border-radius:10px; padding:0 12px; }
     .url-wrap:focus-within { border-color:#6ac9a3; box-shadow:0 0 0 3px rgba(138,245,196,.09); }
     .lock { color:var(--mint); flex:0 0 auto; }
@@ -91,6 +91,7 @@
         <div class="toolbar">
           <label class="url-wrap"><span class="lock" aria-hidden="true">▣</span><span class="sr-only"></span><input id="urlInput" type="url" aria-label="Website URL" value="https://example.com" spellcheck="false"></label>
           <button class="btn primary" id="loadBtn">Load site</button>
+          <button class="btn" id="proxyBtn" title="Read-only server preview for HTTP or iframe-blocked pages">Safe proxy</button>
           <button class="btn warning" id="modeBtn" aria-pressed="false">Unsandbox</button>
           <button class="btn" id="externalBtn" hidden>Open in new tab</button>
         </div>
@@ -132,6 +133,7 @@
   <script>
     const frame = document.querySelector('#siteFrame');
     const urlInput = document.querySelector('#urlInput');
+    const proxyBtn = document.querySelector('#proxyBtn');
     const modeBtn = document.querySelector('#modeBtn');
     const externalBtn = document.querySelector('#externalBtn');
     const dialog = document.querySelector('#warningDialog');
@@ -140,14 +142,15 @@
     const badgeDot = document.querySelector('#badgeDot');
     const toast = document.querySelector('#toast');
     let sandboxed = true;
+    let proxyMode = false;
 
-    function normalizeUrl(value) {
+    function normalizeUrl(value, upgradeInsecure = true) {
       const raw = value.trim();
       if (!raw) throw new Error('Enter a website address.');
       const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
       const parsed = new URL(withProtocol);
       if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an http or https address.');
-      if (location.protocol === 'https:' && parsed.protocol === 'http:') parsed.protocol = 'https:';
+      if (upgradeInsecure && location.protocol === 'https:' && parsed.protocol === 'http:') parsed.protocol = 'https:';
       return parsed.href;
     }
     function requiresFullTab(url) {
@@ -160,11 +163,32 @@
         const target = normalizeUrl(urlInput.value);
         urlInput.value = target;
         if (requiresFullTab(target)) { window.open(target, '_blank', 'noopener,noreferrer'); showToast('This site blocks iframe previews, so it opened in a new tab'); return; }
+        proxyMode = false;
+        setMode(true, false);
         frame.removeAttribute('srcdoc'); frame.src = target; showToast('Loading website preview');
       }
       catch (error) { showToast(error.message); urlInput.focus(); }
     }
-    function setMode(nextSandboxed) {
+    function loadProxy() {
+      try {
+        const target = normalizeUrl(urlInput.value, false);
+        urlInput.value = target;
+        proxyMode = true;
+        sandboxed = true;
+        frame.setAttribute('sandbox', '');
+        frame.removeAttribute('srcdoc');
+        frame.src = `/proxy?url=${encodeURIComponent(target)}`;
+        modeBtn.textContent = 'Exit proxy mode';
+        modeBtn.setAttribute('aria-pressed', 'false');
+        frameStatus.textContent = 'Safe read-only proxy';
+        topStatus.textContent = 'Server proxy protection active';
+        badgeDot.style.background = 'var(--amber)';
+        externalBtn.hidden = true;
+        showToast('Loading a read-only server preview');
+      } catch (error) { showToast(error.message); urlInput.focus(); }
+    }
+    function setMode(nextSandboxed, reload = true) {
+      proxyMode = false;
       sandboxed = nextSandboxed;
       if (sandboxed) frame.setAttribute('sandbox','allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation'); else frame.removeAttribute('sandbox');
       modeBtn.textContent = sandboxed ? 'Unsandbox' : 'Re-enable sandbox';
@@ -173,12 +197,13 @@
       topStatus.textContent = sandboxed ? 'Sandbox protection active' : 'Unsandboxed mode active';
       badgeDot.style.background = sandboxed ? 'var(--mint)' : 'var(--danger)';
       externalBtn.hidden = sandboxed;
-      if (frame.src) frame.src = frame.src;
+      if (reload && frame.src) frame.src = frame.src;
       showToast(sandboxed ? 'Sandbox protection enabled' : 'Sandbox protection removed');
     }
     document.querySelector('#loadBtn').addEventListener('click', loadSite);
+    proxyBtn.addEventListener('click', loadProxy);
     urlInput.addEventListener('keydown', event => { if (event.key === 'Enter') loadSite(); });
-    modeBtn.addEventListener('click', () => sandboxed ? dialog.showModal() : setMode(true));
+    modeBtn.addEventListener('click', () => proxyMode ? loadSite() : (sandboxed ? dialog.showModal() : setMode(true)));
     document.querySelector('#cancelBtn').addEventListener('click', () => dialog.close());
     document.querySelector('#confirmBtn').addEventListener('click', () => { dialog.close(); setMode(false); });
     externalBtn.addEventListener('click', () => { try { window.open(normalizeUrl(urlInput.value), '_blank', 'noopener,noreferrer'); } catch (error) { showToast(error.message); } });
