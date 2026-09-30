@@ -277,7 +277,7 @@
       proxyMode = false;
       gameMode = true;
       sandboxed = true;
-      const gameUrl = `${location.origin}/game?path=${encodeURIComponent(game.path)}`;
+      const gameUrl = `${location.origin}/play-game?path=${encodeURIComponent(game.path)}`;
       urlInput.value = gameUrl;
       frame.removeAttribute('srcdoc');
       frame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
