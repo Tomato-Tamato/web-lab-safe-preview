@@ -26,7 +26,7 @@ export async function onRequestGet(context) {
     });
     if (!source.ok) return new Response('Game file not found.', { status: source.status === 404 ? 404 : 502 });
     let body = source.body;
-    if (length > 0 && length <= 5 * 1024 * 1024) {
+    if (/pokemon/i.test(path) || (length > 0 && length <= 5 * 1024 * 1024)) {
       const html = await source.text();
       body = html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
     }
