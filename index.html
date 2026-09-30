@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Preview a website in a restricted iframe and ask follow-up questions with OpenAI.">
+  <title>Web Lab — Safe site preview</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23070a0f'/%3E%3Cpath d='M18 20h28v24H18z' fill='none' stroke='%238af5c4' stroke-width='5'/%3E%3Cpath d='M18 28h28' stroke='%238af5c4' stroke-width='5'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: dark; --bg:#070a0f; --panel:#0d121a; --panel-2:#111925; --line:#263143; --text:#eef4fb; --muted:#94a2b6; --mint:#8af5c4; --mint-dark:#0d2c23; --amber:#ffc56e; --danger:#ff7a84; --radius:16px; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    body { min-height:100vh; background-image:radial-gradient(circle at 18% -5%,rgba(78,231,170,.12),transparent 28%),radial-gradient(circle at 95% 0,rgba(81,132,255,.12),transparent 24%); }
+    button,input,textarea { font:inherit; }
+    button { cursor:pointer; }
+    .shell { width:min(1500px,100%); min-height:100vh; margin:auto; padding:20px; display:grid; grid-template-rows:auto 1fr; gap:16px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .mark { width:38px; height:38px; border:1px solid #385044; border-radius:11px; background:linear-gradient(145deg,#13261f,#0b1118); display:grid; place-items:center; box-shadow:inset 0 0 0 1px rgba(138,245,196,.06); }
+    .mark svg { width:21px; color:var(--mint); }
+    h1 { font-size:1rem; margin:0; letter-spacing:.02em; }
+    .sub { color:var(--muted); font-size:.78rem; margin-top:2px; }
+    .status { display:flex; align-items:center; gap:8px; padding:8px 11px; border:1px solid var(--line); border-radius:999px; color:#b6c2d2; font-size:.78rem; background:rgba(13,18,26,.72); }
+    .status-dot { width:7px; height:7px; border-radius:50%; background:var(--mint); box-shadow:0 0 14px rgba(138,245,196,.65); }
+    main { min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 370px; gap:16px; }
+    .workspace,.assistant { min-height:0; background:rgba(13,18,26,.9); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:0 24px 80px rgba(0,0,0,.28); }
+    .workspace { display:grid; grid-template-rows:auto 1fr; }
+    .toolbar { padding:12px; display:grid; grid-template-columns:minmax(180px,1fr) auto auto; gap:9px; border-bottom:1px solid var(--line); }
+    .url-wrap { display:flex; align-items:center; gap:9px; min-width:0; background:#080c12; border:1px solid #303b4c; border-radius:10px; padding:0 12px; }
+    .url-wrap:focus-within { border-color:#6ac9a3; box-shadow:0 0 0 3px rgba(138,245,196,.09); }
+    .lock { color:var(--mint); flex:0 0 auto; }
+    input { width:100%; color:var(--text); background:transparent; border:0; outline:0; padding:11px 0; min-width:0; }
+    .btn { border:1px solid #354154; border-radius:10px; padding:10px 14px; color:var(--text); background:#141c28; font-weight:650; font-size:.85rem; }
+    .btn:hover { border-color:#59677c; background:#192333; }
+    .btn.primary { color:#06110d; background:var(--mint); border-color:var(--mint); }
+    .btn.primary:hover { background:#a2ffd7; }
+    .btn.warning { color:var(--amber); background:#20180d; border-color:#71542b; }
+    .btn.warning[aria-pressed="true"] { color:#fff; background:#7b2932; border-color:#d9636d; }
+    .frame-wrap { position:relative; min-height:420px; padding:12px; background:#0a0e14; }
+    iframe { width:100%; height:100%; min-height:420px; display:block; border:1px solid #273244; border-radius:11px; background:#fff; }
+    .frame-badge { position:absolute; left:25px; bottom:25px; display:flex; align-items:center; gap:7px; padding:7px 9px; background:rgba(6,10,15,.88); border:1px solid #344052; border-radius:8px; font-size:.72rem; color:#bac5d5; backdrop-filter:blur(10px); pointer-events:none; }
+    .assistant { display:grid; grid-template-rows:auto 1fr auto; }
+    .assistant-head { padding:17px 18px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+    .assistant-title { display:flex; align-items:center; gap:9px; font-weight:720; }
+    .openai-glyph { width:27px; height:27px; display:grid; place-items:center; border:1px solid #3a495d; border-radius:8px; color:var(--mint); }
+    .external { color:var(--muted); text-decoration:none; font-size:.78rem; }
+    .external:hover { color:var(--text); }
+    .messages { padding:18px; overflow:auto; display:flex; flex-direction:column; gap:14px; }
+    .message { max-width:94%; padding:12px 13px; border-radius:12px; font-size:.9rem; line-height:1.55; }
+    .message.ai { background:var(--panel-2); border:1px solid #29364a; border-top-left-radius:4px; }
+    .message.user { align-self:flex-end; background:var(--mint-dark); border:1px solid #285f4b; border-top-right-radius:4px; }
+    .eyebrow { text-transform:uppercase; letter-spacing:.13em; color:var(--mint); font-size:.67rem; font-weight:800; margin-bottom:5px; }
+    .prompts { display:grid; gap:7px; }
+    .prompt { text-align:left; border:1px solid #2b3748; background:#0a0f16; color:#cbd5e2; border-radius:9px; padding:9px 10px; font-size:.78rem; }
+    .prompt:hover { border-color:#53637a; color:#fff; }
+    .composer { padding:13px; border-top:1px solid var(--line); }
+    .compose-box { background:#080c12; border:1px solid #303b4c; border-radius:12px; padding:10px; }
+    textarea { display:block; width:100%; min-height:74px; resize:none; border:0; outline:0; color:var(--text); background:transparent; line-height:1.45; }
+    .compose-actions { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; }
+    .hint { color:#758399; font-size:.7rem; }
+    .send { border:0; border-radius:8px; padding:8px 11px; background:var(--mint); color:#06110d; font-weight:800; }
+    dialog { width:min(520px,calc(100% - 32px)); color:var(--text); background:#101722; border:1px solid #4b3d37; border-radius:16px; padding:0; box-shadow:0 30px 100px #000; }
+    dialog::backdrop { background:rgba(0,0,0,.72); backdrop-filter:blur(4px); }
+    .modal { padding:22px; }
+    .modal-icon { width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#2b1c12;color:var(--amber);font-size:1.3rem;margin-bottom:14px; }
+    .modal h2 { margin:0 0 8px; font-size:1.2rem; }
+    .modal p { margin:0; color:#aeb9c8; line-height:1.55; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:20px; }
+    .toast { position:fixed; left:50%; bottom:20px; transform:translate(-50%,20px); opacity:0; pointer-events:none; padding:10px 13px; background:#17231e; border:1px solid #315b49; border-radius:9px; color:#d8ffed; font-size:.82rem; transition:.22s; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media (max-width:900px) { .shell{padding:12px} main{grid-template-columns:1fr}.workspace{min-height:620px}.assistant{min-height:560px}.status{display:none} }
+    @media (max-width:600px) { .toolbar{grid-template-columns:1fr 1fr}.url-wrap{grid-column:1/-1}.toolbar .btn{padding:10px 8px}.sub{display:none}.frame-wrap{padding:8px}.frame-badge{left:18px;bottom:18px} }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM4 9h16" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <div><h1>Web Lab</h1><div class="sub">Inspect the web with guardrails</div></div>
+      </div>
+      <div class="status"><span class="status-dot"></span><span id="topStatus">Sandbox protection active</span></div>
+    </header>
+
+    <main>
+      <section class="workspace" aria-label="Website preview">
+        <div class="toolbar">
+          <label class="url-wrap"><span class="lock" aria-hidden="true">▣</span><span class="sr-only"></span><input id="urlInput" type="url" aria-label="Website URL" value="https://example.com" spellcheck="false"></label>
+          <button class="btn primary" id="loadBtn">Load site</button>
+          <button class="btn warning" id="modeBtn" aria-pressed="false">Unsandbox</button>
+        </div>
+        <div class="frame-wrap">
+          <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-scripts" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
+          <div class="frame-badge"><span class="status-dot" id="badgeDot"></span><span id="frameStatus">Sandboxed iframe</span></div>
+        </div>
+      </section>
+
+      <aside class="assistant" aria-label="OpenAI question assistant">
+        <div class="assistant-head">
+          <div class="assistant-title"><span class="openai-glyph" aria-hidden="true">✦</span> Ask OpenAI</div>
+          <a class="external" href="https://chatgpt.com" target="_blank" rel="noopener noreferrer">Open ChatGPT ↗</a>
+        </div>
+        <div class="messages" id="messages" aria-live="polite">
+          <div class="message ai"><div class="eyebrow">Assistant</div>I can help you investigate what you’re viewing. Write a question below and I’ll hand it to ChatGPT in a new tab.</div>
+          <div class="prompts" aria-label="Suggested questions">
+            <button class="prompt">Summarize this website’s purpose</button>
+            <button class="prompt">What security risks should I check?</button>
+            <button class="prompt">Explain this page in simple terms</button>
+          </div>
+        </div>
+        <form class="composer" id="chatForm">
+          <div class="compose-box">
+            <textarea id="question" aria-label="Question for OpenAI" placeholder="Ask a question about this website…" required></textarea>
+            <div class="compose-actions"><span class="hint">Opens ChatGPT securely</span><button class="send" type="submit">Ask ↗</button></div>
+          </div>
+        </form>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="warningDialog">
+    <div class="modal">
+      <div class="modal-icon" aria-hidden="true">⚠</div>
+      <h2>Remove sandbox protection?</h2>
+      <p>This lets the loaded page use more browser capabilities. Only continue for a site you trust. The preview will reload when the sandbox is removed.</p>
+      <div class="modal-actions"><button class="btn" id="cancelBtn">Keep sandboxed</button><button class="btn warning" id="confirmBtn">Remove protection</button></div>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const frame = document.querySelector('#siteFrame');
+    const urlInput = document.querySelector('#urlInput');
+    const modeBtn = document.querySelector('#modeBtn');
+    const dialog = document.querySelector('#warningDialog');
+    const frameStatus = document.querySelector('#frameStatus');
+    const topStatus = document.querySelector('#topStatus');
+    const badgeDot = document.querySelector('#badgeDot');
+    const toast = document.querySelector('#toast');
+    let sandboxed = true;
+
+    function normalizeUrl(value) {
+      const raw = value.trim();
+      if (!raw) throw new Error('Enter a website address.');
+      const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      const parsed = new URL(withProtocol);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an http or https address.');
+      return parsed.href;
+    }
+    function showToast(message) { toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2400); }
+    function loadSite() {
+      try { frame.removeAttribute('srcdoc'); frame.src = normalizeUrl(urlInput.value); showToast('Loading website preview'); }
+      catch (error) { showToast(error.message); urlInput.focus(); }
+    }
+    function setMode(nextSandboxed) {
+      sandboxed = nextSandboxed;
+      if (sandboxed) frame.setAttribute('sandbox','allow-forms allow-modals allow-popups allow-scripts'); else frame.removeAttribute('sandbox');
+      modeBtn.textContent = sandboxed ? 'Unsandbox' : 'Re-enable sandbox';
+      modeBtn.setAttribute('aria-pressed', String(!sandboxed));
+      frameStatus.textContent = sandboxed ? 'Sandboxed iframe' : 'Protection removed';
+      topStatus.textContent = sandboxed ? 'Sandbox protection active' : 'Unsandboxed mode active';
+      badgeDot.style.background = sandboxed ? 'var(--mint)' : 'var(--danger)';
+      if (frame.src) frame.src = frame.src;
+      showToast(sandboxed ? 'Sandbox protection enabled' : 'Sandbox protection removed');
+    }
+    document.querySelector('#loadBtn').addEventListener('click', loadSite);
+    urlInput.addEventListener('keydown', event => { if (event.key === 'Enter') loadSite(); });
+    modeBtn.addEventListener('click', () => sandboxed ? dialog.showModal() : setMode(true));
+    document.querySelector('#cancelBtn').addEventListener('click', () => dialog.close());
+    document.querySelector('#confirmBtn').addEventListener('click', () => { dialog.close(); setMode(false); });
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    document.querySelectorAll('.prompt').forEach(button => button.addEventListener('click', () => { document.querySelector('#question').value = button.textContent; document.querySelector('#question').focus(); }));
+    document.querySelector('#chatForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const question = document.querySelector('#question').value.trim();
+      if (!question) return;
+      let current = urlInput.value.trim();
+      try { current = normalizeUrl(current); } catch (_) {}
+      const prompt = `${question}\n\nWebsite I am reviewing: ${current}`;
+      window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank', 'noopener,noreferrer');
+      document.querySelector('#messages').insertAdjacentHTML('beforeend', `<div class="message user"><div class="eyebrow">You</div>${question.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}</div>`);
+      document.querySelector('#question').value = '';
+      showToast('Opening your question in ChatGPT');
+    });
+  </script>
+</body>
+</html>
