@@ -13,15 +13,20 @@ export async function onRequestGet(context) {
   if (!validPath(path)) return new Response('Invalid game path.', { status: 400 });
   const sourceUrl = REPOSITORY_ROOT + path.split('/').map(encodeURIComponent).join('/');
   try {
+    const metadata = await fetch(sourceUrl, {
+      method: 'HEAD',
+      redirect: 'follow',
+      headers: { accept: 'text/html', 'user-agent': 'WebLab-GameLoader/1.0' }
+    });
+    const length = Number(metadata.headers.get('content-length') || 0);
+    if (length > MAX_GAME_BYTES) return new Response('This game is too large to stream safely.', { status: 413 });
     const source = await fetch(sourceUrl, {
       redirect: 'follow',
       headers: { accept: 'text/html', 'user-agent': 'WebLab-GameLoader/1.0' }
     });
     if (!source.ok) return new Response('Game file not found.', { status: source.status === 404 ? 404 : 502 });
-    const length = Number(source.headers.get('content-length') || 0);
-    if (length > MAX_GAME_BYTES) return new Response('This game is too large to stream safely.', { status: 413 });
     let body = source.body;
-    if (length > 0 && length <= 1024 * 1024) {
+    if (length > 0 && length <= 5 * 1024 * 1024) {
       const html = await source.text();
       body = html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
     }
