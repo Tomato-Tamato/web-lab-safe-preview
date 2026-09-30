@@ -22,10 +22,10 @@
     .sub { color:var(--muted); font-size:.78rem; margin-top:2px; }
     .status { display:flex; align-items:center; gap:8px; padding:8px 11px; border:1px solid var(--line); border-radius:999px; color:#b6c2d2; font-size:.78rem; background:rgba(13,18,26,.72); }
     .status-dot { width:7px; height:7px; border-radius:50%; background:var(--mint); box-shadow:0 0 14px rgba(138,245,196,.65); }
-    main { min-height:0; display:block; }
+    main { min-height:0; display:grid; gap:16px; }
     .workspace,.assistant { min-height:0; background:rgba(13,18,26,.9); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:0 24px 80px rgba(0,0,0,.28); }
     .workspace { display:grid; grid-template-rows:auto 1fr; }
-    .toolbar { padding:12px; display:grid; grid-template-columns:minmax(180px,1fr) auto auto auto auto; gap:9px; border-bottom:1px solid var(--line); }
+    .toolbar { padding:12px; display:grid; grid-template-columns:minmax(180px,1fr) auto auto auto; gap:9px; border-bottom:1px solid var(--line); }
     .url-wrap { display:flex; align-items:center; gap:9px; min-width:0; background:#080c12; border:1px solid #303b4c; border-radius:10px; padding:0 12px; }
     .url-wrap:focus-within { border-color:#6ac9a3; box-shadow:0 0 0 3px rgba(138,245,196,.09); }
     .lock { color:var(--mint); flex:0 0 auto; }
@@ -39,6 +39,19 @@
     .frame-wrap { position:relative; min-height:420px; padding:12px; background:#0a0e14; }
     iframe { width:100%; height:100%; min-height:420px; display:block; border:1px solid #273244; border-radius:11px; background:#fff; }
     .frame-badge { position:absolute; left:25px; bottom:25px; display:flex; align-items:center; gap:7px; padding:7px 9px; background:rgba(6,10,15,.88); border:1px solid #344052; border-radius:8px; font-size:.72rem; color:#bac5d5; backdrop-filter:blur(10px); pointer-events:none; }
+    .game-library { background:rgba(13,18,26,.9); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:0 24px 80px rgba(0,0,0,.2); }
+    .library-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:13px; }
+    .library-head h2 { margin:0; font-size:1rem; }
+    .game-count { color:var(--muted); font-size:.78rem; }
+    .game-search { display:flex; align-items:center; gap:9px; width:min(460px,100%); background:#080c12; border:1px solid #303b4c; border-radius:10px; padding:0 12px; }
+    .game-search:focus-within { border-color:#6ac9a3; box-shadow:0 0 0 3px rgba(138,245,196,.09); }
+    .game-grid { max-height:440px; overflow:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:9px; padding:2px 3px 4px 0; scrollbar-color:#3b4a5f #0a0e14; }
+    .game-card { min-height:70px; display:flex; align-items:center; gap:11px; text-align:left; border:1px solid #2b3749; border-radius:11px; padding:11px; color:var(--text); background:#111925; }
+    .game-card:hover,.game-card:focus-visible { border-color:#6ac9a3; background:#16241f; outline:none; }
+    .game-icon { flex:0 0 auto; width:36px; height:36px; display:grid; place-items:center; border-radius:9px; color:#07110d; background:linear-gradient(145deg,var(--mint),#57b7ff); font-weight:900; text-transform:uppercase; }
+    .game-name { min-width:0; font-size:.83rem; font-weight:700; overflow-wrap:anywhere; }
+    .library-state { grid-column:1/-1; color:var(--muted); padding:20px; text-align:center; }
+    .load-sentinel { height:1px; grid-column:1/-1; }
     .assistant { position:fixed; right:22px; bottom:88px; z-index:20; width:min(390px,calc(100vw - 24px)); height:min(560px,calc(100vh - 130px)); display:none; grid-template-rows:auto 1fr auto; }
     .assistant.open { display:grid; animation:chat-in .18s ease-out; }
     .chat-toggle { position:fixed; right:22px; bottom:22px; z-index:21; display:flex; align-items:center; gap:9px; border:1px solid #6fe0b3; border-radius:999px; padding:12px 17px; background:var(--mint); color:#06110d; font-weight:800; box-shadow:0 14px 38px rgba(0,0,0,.36); }
@@ -71,7 +84,7 @@
     .modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:20px; }
     .toast { position:fixed; left:50%; bottom:20px; transform:translate(-50%,20px); opacity:0; pointer-events:none; padding:10px 13px; background:#17231e; border:1px solid #315b49; border-radius:9px; color:#d8ffed; font-size:.82rem; transition:.22s; }
     .toast.show { opacity:1; transform:translate(-50%,0); }
-    @media (max-width:900px) { .shell{padding:12px}.workspace{min-height:620px}.status{display:none} }
+    @media (max-width:900px) { .shell{padding:12px}.workspace{min-height:620px}.status{display:none}.library-head{align-items:stretch;flex-direction:column}.game-search{width:100%} }
     @media (max-width:600px) { .assistant{right:12px;bottom:76px;height:calc(100vh - 100px)}.chat-toggle{right:12px;bottom:12px} }
     @media (max-width:600px) { .toolbar{grid-template-columns:1fr 1fr}.url-wrap{grid-column:1/-1}.toolbar .btn{padding:10px 8px}.sub{display:none}.frame-wrap{padding:8px}.frame-badge{left:18px;bottom:18px} }
   </style>
@@ -93,12 +106,19 @@
           <button class="btn primary" id="loadBtn">Load site</button>
           <button class="btn" id="proxyBtn" title="Read-only server preview for HTTP or iframe-blocked pages">Safe proxy</button>
           <button class="btn warning" id="modeBtn" aria-pressed="false">Unsandbox</button>
-          <button class="btn" id="externalBtn">Open interactive</button>
         </div>
         <div class="frame-wrap">
           <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation" allow="clipboard-read; clipboard-write" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
           <div class="frame-badge"><span class="status-dot" id="badgeDot"></span><span id="frameStatus">Sandboxed iframe</span></div>
         </div>
+      </section>
+
+      <section class="game-library" aria-labelledby="gamesHeading">
+        <div class="library-head">
+          <div><h2 id="gamesHeading">Game library</h2><div class="game-count" id="gameCount">Loading games…</div></div>
+          <label class="game-search"><span aria-hidden="true">⌕</span><input id="gameSearch" type="search" placeholder="Search games" aria-label="Search games"></label>
+        </div>
+        <div class="game-grid" id="gameGrid" aria-live="polite"><div class="library-state">Loading the game list…</div></div>
       </section>
 
       <aside class="assistant" id="chatPanel" aria-label="OpenAI question assistant">
@@ -135,7 +155,6 @@
     const urlInput = document.querySelector('#urlInput');
     const proxyBtn = document.querySelector('#proxyBtn');
     const modeBtn = document.querySelector('#modeBtn');
-    const externalBtn = document.querySelector('#externalBtn');
     const dialog = document.querySelector('#warningDialog');
     const frameStatus = document.querySelector('#frameStatus');
     const topStatus = document.querySelector('#topStatus');
@@ -143,6 +162,7 @@
     const toast = document.querySelector('#toast');
     let sandboxed = true;
     let proxyMode = false;
+    let gameMode = false;
 
     function normalizeUrl(value, upgradeInsecure = true) {
       const raw = value.trim();
@@ -163,13 +183,16 @@
         const target = normalizeUrl(urlInput.value);
         urlInput.value = target;
         if (requiresFullTab(target)) {
-          window.open(target, '_blank', 'noopener,noreferrer');
-          frameStatus.textContent = 'Opened in interactive tab';
-          topStatus.textContent = 'Interactive site opened separately';
-          showToast('This interactive site cannot run in an iframe, so it opened in a full tab');
+          setMode(true, false);
+          frame.removeAttribute('src');
+          frame.srcdoc = '<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#101722;color:#eef4fb;font:16px system-ui}.c{max-width:520px;padding:32px;text-align:center}h2{color:#ffc56e}p{color:#aeb9c8;line-height:1.55}</style><div class="c"><h2>This site blocks embedded play</h2><p>Choose a self-contained game from the library below to play without leaving Web Lab.</p></div>';
+          frameStatus.textContent = 'Embedding blocked by site';
+          topStatus.textContent = 'Choose a game from the library';
+          showToast('This site blocks iframe play; try the game library below');
           return;
         }
         proxyMode = false;
+        gameMode = false;
         setMode(true, false);
         frame.removeAttribute('srcdoc'); frame.src = target; showToast('Loading website preview');
       }
@@ -180,13 +203,16 @@
         const target = normalizeUrl(urlInput.value, false);
         urlInput.value = target;
         if (requiresFullTab(target)) {
-          window.open(target, '_blank', 'noopener,noreferrer');
-          frameStatus.textContent = 'Opened in interactive tab';
-          topStatus.textContent = 'Games need a full browser tab';
-          showToast('Games need scripts and storage, so this opened in an interactive tab');
+          setMode(true, false);
+          frame.removeAttribute('src');
+          frame.srcdoc = '<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#101722;color:#eef4fb;font:16px system-ui}.c{max-width:520px;padding:32px;text-align:center}h2{color:#ffc56e}p{color:#aeb9c8;line-height:1.55}</style><div class="c"><h2>Interactive sites cannot use the safe proxy</h2><p>Choose a self-contained game from the library below to play inside Web Lab.</p></div>';
+          frameStatus.textContent = 'Interactive proxy blocked';
+          topStatus.textContent = 'Choose a game from the library';
+          showToast('Use the game library for embedded play');
           return;
         }
         proxyMode = true;
+        gameMode = false;
         sandboxed = true;
         frame.setAttribute('sandbox', 'allow-scripts');
         frame.removeAttribute('srcdoc');
@@ -196,12 +222,12 @@
         frameStatus.textContent = 'Safe read-only proxy';
         topStatus.textContent = 'Server proxy protection active';
         badgeDot.style.background = 'var(--amber)';
-        externalBtn.hidden = false;
         showToast('Loading a read-only server preview');
       } catch (error) { showToast(error.message); urlInput.focus(); }
     }
     function setMode(nextSandboxed, reload = true) {
       proxyMode = false;
+      gameMode = false;
       sandboxed = nextSandboxed;
       if (sandboxed) frame.setAttribute('sandbox','allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation'); else frame.removeAttribute('sandbox');
       modeBtn.textContent = sandboxed ? 'Unsandbox' : 'Re-enable sandbox';
@@ -209,7 +235,6 @@
       frameStatus.textContent = sandboxed ? 'Sandboxed iframe' : 'Protection removed';
       topStatus.textContent = sandboxed ? 'Sandbox protection active' : 'Unsandboxed mode active';
       badgeDot.style.background = sandboxed ? 'var(--mint)' : 'var(--danger)';
-      externalBtn.hidden = false;
       if (reload && frame.src) frame.src = frame.src;
       showToast(sandboxed ? 'Sandbox protection enabled' : 'Sandbox protection removed');
     }
@@ -227,11 +252,102 @@
       } catch (_) {}
     });
     urlInput.addEventListener('keydown', event => { if (event.key === 'Enter') loadSite(); });
-    modeBtn.addEventListener('click', () => proxyMode ? loadSite() : (sandboxed ? dialog.showModal() : setMode(true)));
+    modeBtn.addEventListener('click', () => {
+      if (gameMode) {
+        gameMode = false;
+        setMode(true, false);
+        frame.removeAttribute('src');
+        frame.srcdoc = '<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class="c"><h2>Game closed</h2><p>Choose another game below or enter a website address above.</p></div>';
+        return;
+      }
+      proxyMode ? loadSite() : (sandboxed ? dialog.showModal() : setMode(true));
+    });
     document.querySelector('#cancelBtn').addEventListener('click', () => dialog.close());
     document.querySelector('#confirmBtn').addEventListener('click', () => { dialog.close(); setMode(false); });
-    externalBtn.addEventListener('click', () => { try { window.open(normalizeUrl(urlInput.value), '_blank', 'noopener,noreferrer'); } catch (error) { showToast(error.message); } });
     dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    const gameGrid = document.querySelector('#gameGrid');
+    const gameSearch = document.querySelector('#gameSearch');
+    const gameCount = document.querySelector('#gameCount');
+    let allGames = [];
+    let filteredGames = [];
+    let renderedGames = 0;
+    const pageSize = 80;
+
+    function playGame(game) {
+      proxyMode = false;
+      gameMode = true;
+      sandboxed = true;
+      const gameUrl = `${location.origin}/game?path=${encodeURIComponent(game.path)}`;
+      urlInput.value = gameUrl;
+      frame.removeAttribute('srcdoc');
+      frame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
+      frame.setAttribute('allow', 'autoplay; fullscreen; gamepad');
+      frame.src = gameUrl;
+      modeBtn.textContent = 'Exit game mode';
+      modeBtn.setAttribute('aria-pressed', 'false');
+      frameStatus.textContent = `Playing ${game.name}`;
+      topStatus.textContent = 'Isolated game mode';
+      badgeDot.style.background = 'var(--mint)';
+      frame.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast(`Loading ${game.name}`);
+    }
+
+    function renderMoreGames() {
+      if (renderedGames === 0) gameGrid.textContent = '';
+      const next = filteredGames.slice(renderedGames, renderedGames + pageSize);
+      next.forEach(game => {
+        const card = document.createElement('button');
+        card.className = 'game-card';
+        card.type = 'button';
+        const icon = document.createElement('span');
+        icon.className = 'game-icon';
+        icon.textContent = game.name.charAt(0) || '?';
+        const name = document.createElement('span');
+        name.className = 'game-name';
+        name.textContent = game.name;
+        card.append(icon, name);
+        card.addEventListener('click', () => playGame(game));
+        gameGrid.append(card);
+      });
+      renderedGames += next.length;
+      if (renderedGames < filteredGames.length) {
+        const sentinel = document.createElement('div');
+        sentinel.className = 'load-sentinel';
+        gameGrid.append(sentinel);
+        gameObserver.observe(sentinel);
+      }
+    }
+
+    const gameObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        gameObserver.unobserve(entry.target);
+        entry.target.remove();
+        renderMoreGames();
+      });
+    }, { root: gameGrid, rootMargin: '180px' });
+
+    function filterGames() {
+      const query = gameSearch.value.trim().toLowerCase();
+      filteredGames = query ? allGames.filter(game => game.name.toLowerCase().includes(query)) : allGames;
+      renderedGames = 0;
+      gameObserver.disconnect();
+      gameGrid.innerHTML = filteredGames.length ? '' : '<div class="library-state">No games match that search.</div>';
+      gameCount.textContent = `${filteredGames.length.toLocaleString()} game${filteredGames.length === 1 ? '' : 's'}`;
+      if (filteredGames.length) renderMoreGames();
+    }
+
+    gameSearch.addEventListener('input', filterGames);
+    fetch('/games').then(response => {
+      if (!response.ok) throw new Error('Game list unavailable');
+      return response.json();
+    }).then(games => {
+      allGames = games;
+      filterGames();
+    }).catch(() => {
+      gameGrid.innerHTML = '<div class="library-state">The game list could not be loaded. Try refreshing.</div>';
+      gameCount.textContent = 'Unavailable';
+    });
     const chatPanel = document.querySelector('.assistant');
     const chatToggle = document.querySelector('#chatToggle');
     function setChat(open) { chatPanel.classList.toggle('open', open); chatToggle.setAttribute('aria-expanded', String(open)); if (open) document.querySelector('#question').focus(); }
