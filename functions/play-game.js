@@ -1,5 +1,23 @@
 const REPOSITORY_ROOT = 'https://raw.githubusercontent.com/Hexorod/ugs/main/';
 const MAX_GAME_BYTES = 35 * 1024 * 1024;
+const BRIDGE_TAG = '<script src="/game-bridge"></script>';
+
+function prependStream(stream, prefix) {
+  const reader = stream.getReader();
+  const first = new TextEncoder().encode(prefix);
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(first);
+      const pump = () => reader.read().then(({ done, value }) => {
+        if (done) return controller.close();
+        controller.enqueue(value);
+        return pump();
+      }).catch(error => controller.error(error));
+      return pump();
+    },
+    cancel(reason) { return reader.cancel(reason); }
+  });
+}
 
 function validPath(path) {
   return typeof path === 'string' && path.length <= 240 && /\.html?$/i.test(path) &&
@@ -28,7 +46,9 @@ export async function onRequestGet(context) {
     let body = source.body;
     if (/pokemon/i.test(path) || (length > 0 && length <= 5 * 1024 * 1024)) {
       const html = await source.text();
-      body = html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
+      body = BRIDGE_TAG + html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
+    } else {
+      body = prependStream(body, BRIDGE_TAG);
     }
     return new Response(body, {
       status: 200,

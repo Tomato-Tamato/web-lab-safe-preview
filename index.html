@@ -123,7 +123,7 @@
           <button class="btn warning" id="modeBtn" aria-pressed="false">Unsandbox</button>
         </div>
         <div class="frame-wrap">
-          <div class="player-controls"><button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen"><span aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button></div>
+          <div class="player-controls"><button class="icon-btn save-control" id="exportSaveBtn" type="button" hidden>Export save</button><button class="icon-btn save-control" id="importSaveBtn" type="button" hidden>Import save</button><input id="saveFileInput" type="file" accept="application/json,.json" hidden><button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen"><span aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button></div>
           <div class="frame-loading" id="frameLoading"><div class="loader">Loading player…</div></div>
           <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation" allow="clipboard-read; clipboard-write; fullscreen; gamepad; autoplay; cross-origin-isolated" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
           <div class="frame-badge"><span class="status-dot" id="badgeDot"></span><span id="frameStatus">Sandboxed iframe</span></div>
@@ -173,6 +173,9 @@
     const frameWrap = document.querySelector('.frame-wrap');
     const fullscreenBtn = document.querySelector('#fullscreenBtn');
     const fullscreenLabel = document.querySelector('#fullscreenLabel');
+    const exportSaveBtn = document.querySelector('#exportSaveBtn');
+    const importSaveBtn = document.querySelector('#importSaveBtn');
+    const saveFileInput = document.querySelector('#saveFileInput');
     const urlInput = document.querySelector('#urlInput');
     const proxyBtn = document.querySelector('#proxyBtn');
     const modeBtn = document.querySelector('#modeBtn');
@@ -184,6 +187,7 @@
     let sandboxed = true;
     let proxyMode = false;
     let gameMode = false;
+    let currentGame = null;
 
     function normalizeUrl(value, upgradeInsecure = true) {
       const raw = value.trim();
@@ -255,6 +259,7 @@
       proxyMode = false;
       gameMode = false;
       workspace.classList.remove('game-active');
+      exportSaveBtn.hidden = importSaveBtn.hidden = true;
       sandboxed = nextSandboxed;
       if (sandboxed) frame.setAttribute('sandbox','allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation'); else frame.removeAttribute('sandbox');
       modeBtn.textContent = sandboxed ? 'Unsandbox' : 'Re-enable sandbox';
@@ -315,8 +320,10 @@
     function playGame(game) {
       proxyMode = false;
       gameMode = true;
+      currentGame = game;
       sandboxed = true;
       workspace.classList.add('game-active');
+      exportSaveBtn.hidden = importSaveBtn.hidden = false;
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
       const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}`;
       urlInput.value = gameUrl;
@@ -333,6 +340,37 @@
       frame.scrollIntoView({ behavior: 'smooth', block: 'center' });
       showToast(`Loading ${game.name}`);
     }
+
+    exportSaveBtn.addEventListener('click', () => {
+      if (!gameMode) return;
+      frame.contentWindow.postMessage({ type: 'web-lab-export-save' }, '*');
+      showToast('Preparing save backup…');
+    });
+    importSaveBtn.addEventListener('click', () => saveFileInput.click());
+    saveFileInput.addEventListener('change', async () => {
+      const file = saveFileInput.files[0];
+      if (!file || !gameMode) return;
+      try {
+        const payload = JSON.parse(await file.text());
+        frame.contentWindow.postMessage({ type: 'web-lab-import-save', payload }, '*');
+        showToast('Importing save data…');
+      } catch (_) { showToast('That save file is not valid'); }
+      saveFileInput.value = '';
+    });
+    window.addEventListener('message', event => {
+      if (!gameMode || event.source !== frame.contentWindow || !event.data) return;
+      if (event.data.type === 'web-lab-save-export') {
+        const blob = new Blob([JSON.stringify(event.data.payload)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${(currentGame?.name || 'game').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-save.json`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        showToast('Save backup exported');
+      }
+      if (event.data.type === 'web-lab-save-imported') showToast('Save imported — reload the game to apply it');
+      if (event.data.type === 'web-lab-save-error') showToast(event.data.message || 'Save operation failed');
+    });
 
     function renderMoreGames() {
       if (renderedGames === 0) gameGrid.textContent = '';
