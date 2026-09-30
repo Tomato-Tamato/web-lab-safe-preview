@@ -54,7 +54,7 @@ export async function onRequestGet(context) {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'public, max-age=3600, s-maxage=86400',
+        'cache-control': 'public, max-age=300, s-maxage=3600',
         'content-security-policy': "default-src * data: blob:; script-src * data: blob: 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src * data: blob:; connect-src * data: blob: ws: wss:; frame-ancestors https://web-lab-safe-preview-git.pages.dev https://*.web-lab-safe-preview-git.pages.dev;",
         'cross-origin-opener-policy': 'same-origin',
         'cross-origin-embedder-policy': 'credentialless',
