@@ -325,7 +325,7 @@
       workspace.classList.add('game-active');
       exportSaveBtn.hidden = importSaveBtn.hidden = false;
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
-      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-4`;
+      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-5`;
       urlInput.value = gameUrl;
       frame.removeAttribute('srcdoc');
       frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock');

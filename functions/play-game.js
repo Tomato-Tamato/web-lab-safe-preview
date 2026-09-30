@@ -1,23 +1,5 @@
-const REPOSITORY_ROOT = 'https://raw.githubusercontent.com/Hexorod/ugs/main/';
-const MAX_GAME_BYTES = 35 * 1024 * 1024;
+const MAX_GAME_BYTES = 24 * 1024 * 1024;
 const BRIDGE_TAG = '<script src="/game-bridge"></script>';
-
-function prependStream(stream, prefix) {
-  const reader = stream.getReader();
-  const first = new TextEncoder().encode(prefix);
-  return new ReadableStream({
-    start(controller) {
-      controller.enqueue(first);
-      const pump = () => reader.read().then(({ done, value }) => {
-        if (done) return controller.close();
-        controller.enqueue(value);
-        return pump();
-      }).catch(error => controller.error(error));
-      return pump();
-    },
-    cancel(reason) { return reader.cancel(reason); }
-  });
-}
 
 function validPath(path) {
   return typeof path === 'string' && path.length <= 240 && /\.html?$/i.test(path) &&
@@ -29,27 +11,17 @@ export async function onRequestGet(context) {
   const requestUrl = new URL(context.request.url);
   const path = requestUrl.searchParams.get('path');
   if (!validPath(path)) return new Response('Invalid game path.', { status: 400 });
-  const sourceUrl = REPOSITORY_ROOT + path.split('/').map(encodeURIComponent).join('/');
   try {
-    const metadata = await fetch(sourceUrl, {
-      method: 'HEAD',
-      redirect: 'follow',
-      headers: { accept: 'text/html', 'user-agent': 'WebLab-GameLoader/1.0' }
-    });
-    const length = Number(metadata.headers.get('content-length') || 0);
-    if (length > MAX_GAME_BYTES) return new Response('This game is too large to stream safely.', { status: 413 });
-    const source = await fetch(sourceUrl, {
-      redirect: 'follow',
-      headers: { accept: 'text/html', 'user-agent': 'WebLab-GameLoader/1.0' }
-    });
+    const assetPath = '/games/files/' + path.split('/').map(encodeURIComponent).join('/');
+    const assetUrl = new URL(assetPath, context.request.url);
+    const source = context.env.ASSETS
+      ? await context.env.ASSETS.fetch(new Request(assetUrl, context.request))
+      : await fetch(assetUrl);
     if (!source.ok) return new Response('Game file not found.', { status: source.status === 404 ? 404 : 502 });
-    let body = source.body;
-    if (/pokemon/i.test(path) || (length > 0 && length <= 5 * 1024 * 1024)) {
-      const html = await source.text();
-      body = BRIDGE_TAG + html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
-    } else {
-      body = prependStream(body, BRIDGE_TAG);
-    }
+    const length = Number(source.headers.get('content-length') || 0);
+    if (length > MAX_GAME_BYTES) return new Response('This game is too large to run on this host.', { status: 413 });
+    const html = await source.text();
+    const body = BRIDGE_TAG + html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
     return new Response(body, {
       status: 200,
       headers: {
@@ -65,6 +37,6 @@ export async function onRequestGet(context) {
       }
     });
   } catch (_) {
-    return new Response('The game source could not be reached.', { status: 502 });
+    return new Response('The local game file could not be loaded.', { status: 502 });
   }
 }
