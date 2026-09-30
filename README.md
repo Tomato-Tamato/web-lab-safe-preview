@@ -1,2 +1,2 @@
-great runtime game website that has over 2000 games.
+great runtime game website that has over 1000 games.
 https://web-lab-safe-preview-git.pages.dev/
