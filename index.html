@@ -36,8 +36,23 @@
     .btn.primary:hover { background:#a2ffd7; }
     .btn.warning { color:var(--amber); background:#20180d; border-color:#71542b; }
     .btn.warning[aria-pressed="true"] { color:#fff; background:#7b2932; border-color:#d9636d; }
-    .frame-wrap { position:relative; min-height:420px; padding:12px; background:#0a0e14; }
+    .frame-wrap { position:relative; min-height:420px; padding:12px; background:#0a0e14; transition:.2s ease; }
     iframe { width:100%; height:100%; min-height:420px; display:block; border:1px solid #273244; border-radius:11px; background:#fff; }
+    .workspace.game-active .frame-wrap { min-height:min(72vh,820px); background:#030508; }
+    .workspace.game-active iframe { min-height:min(70vh,790px); border-color:#385044; box-shadow:0 0 0 1px rgba(138,245,196,.08),0 28px 80px rgba(0,0,0,.5); }
+    .player-controls { position:absolute; z-index:5; top:24px; right:24px; display:flex; gap:8px; }
+    .icon-btn { display:flex; align-items:center; gap:7px; border:1px solid #46566c; border-radius:9px; padding:8px 10px; color:#f4f8fd; background:rgba(7,11,17,.9); font-size:.78rem; font-weight:750; backdrop-filter:blur(10px); }
+    .icon-btn:hover { border-color:var(--mint); color:var(--mint); }
+    .frame-loading { position:absolute; z-index:4; inset:12px; display:none; place-items:center; border-radius:11px; background:rgba(5,8,13,.9); color:#dbe6f3; }
+    .frame-wrap.loading .frame-loading { display:grid; }
+    .loader { display:flex; align-items:center; gap:10px; font-size:.85rem; }
+    .loader::before { content:""; width:18px; height:18px; border:2px solid #3a485a; border-top-color:var(--mint); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .frame-wrap:fullscreen { padding:0; background:#000; }
+    .frame-wrap:fullscreen iframe { min-height:100vh; height:100vh; border:0; border-radius:0; }
+    .frame-wrap:fullscreen .player-controls { top:14px; right:14px; }
+    .frame-wrap:fullscreen .frame-loading { inset:0; border-radius:0; }
+    .frame-wrap:fullscreen .frame-badge { left:14px; bottom:14px; }
     .frame-badge { position:absolute; left:25px; bottom:25px; display:flex; align-items:center; gap:7px; padding:7px 9px; background:rgba(6,10,15,.88); border:1px solid #344052; border-radius:8px; font-size:.72rem; color:#bac5d5; backdrop-filter:blur(10px); pointer-events:none; }
     .game-library { background:rgba(13,18,26,.9); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:0 24px 80px rgba(0,0,0,.2); }
     .library-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:13px; }
@@ -108,6 +123,8 @@
           <button class="btn warning" id="modeBtn" aria-pressed="false">Unsandbox</button>
         </div>
         <div class="frame-wrap">
+          <div class="player-controls"><button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen"><span aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button></div>
+          <div class="frame-loading" id="frameLoading"><div class="loader">Loading player…</div></div>
           <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation" allow="clipboard-read; clipboard-write" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
           <div class="frame-badge"><span class="status-dot" id="badgeDot"></span><span id="frameStatus">Sandboxed iframe</span></div>
         </div>
@@ -152,6 +169,10 @@
 
   <script>
     const frame = document.querySelector('#siteFrame');
+    const workspace = document.querySelector('.workspace');
+    const frameWrap = document.querySelector('.frame-wrap');
+    const fullscreenBtn = document.querySelector('#fullscreenBtn');
+    const fullscreenLabel = document.querySelector('#fullscreenLabel');
     const urlInput = document.querySelector('#urlInput');
     const proxyBtn = document.querySelector('#proxyBtn');
     const modeBtn = document.querySelector('#modeBtn');
@@ -178,6 +199,7 @@
       return ['discord.com','discord.gg','discordapp.com','poki.com','poki.io','crazygames.com','itch.io','now.gg','newgrounds.com'].some(domain => host === domain || host.endsWith(`.${domain}`));
     }
     function showToast(message) { toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2400); }
+    function setFrameLoading(loading) { frameWrap.classList.toggle('loading', loading); }
     function loadSite() {
       try {
         const target = normalizeUrl(urlInput.value);
@@ -193,7 +215,9 @@
         }
         proxyMode = false;
         gameMode = false;
+        workspace.classList.remove('game-active');
         setMode(true, false);
+        setFrameLoading(true);
         frame.removeAttribute('srcdoc'); frame.src = target; showToast('Loading website preview');
       }
       catch (error) { showToast(error.message); urlInput.focus(); }
@@ -213,9 +237,11 @@
         }
         proxyMode = true;
         gameMode = false;
+        workspace.classList.remove('game-active');
         sandboxed = true;
         frame.setAttribute('sandbox', 'allow-scripts');
         frame.removeAttribute('srcdoc');
+        setFrameLoading(true);
         frame.src = `/proxy?url=${encodeURIComponent(target)}`;
         modeBtn.textContent = 'Exit proxy mode';
         modeBtn.setAttribute('aria-pressed', 'false');
@@ -228,6 +254,7 @@
     function setMode(nextSandboxed, reload = true) {
       proxyMode = false;
       gameMode = false;
+      workspace.classList.remove('game-active');
       sandboxed = nextSandboxed;
       if (sandboxed) frame.setAttribute('sandbox','allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation'); else frame.removeAttribute('sandbox');
       modeBtn.textContent = sandboxed ? 'Unsandbox' : 'Re-enable sandbox';
@@ -240,6 +267,18 @@
     }
     document.querySelector('#loadBtn').addEventListener('click', loadSite);
     proxyBtn.addEventListener('click', loadProxy);
+    frame.addEventListener('load', () => setFrameLoading(false));
+    fullscreenBtn.addEventListener('click', async () => {
+      try {
+        if (document.fullscreenElement === frameWrap) await document.exitFullscreen();
+        else await frameWrap.requestFullscreen();
+      } catch (_) { showToast('Fullscreen is not available in this browser'); }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const active = document.fullscreenElement === frameWrap;
+      fullscreenLabel.textContent = active ? 'Exit fullscreen' : 'Fullscreen';
+      fullscreenBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    });
     window.addEventListener('message', event => {
       if (!proxyMode || event.source !== frame.contentWindow || event.origin !== 'null') return;
       const message = event.data;
@@ -277,11 +316,13 @@
       proxyMode = false;
       gameMode = true;
       sandboxed = true;
+      workspace.classList.add('game-active');
       const gameUrl = `${location.origin}/play-game?path=${encodeURIComponent(game.path)}`;
       urlInput.value = gameUrl;
       frame.removeAttribute('srcdoc');
       frame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
       frame.setAttribute('allow', 'autoplay; fullscreen; gamepad');
+      setFrameLoading(true);
       frame.src = gameUrl;
       modeBtn.textContent = 'Exit game mode';
       modeBtn.setAttribute('aria-pressed', 'false');
