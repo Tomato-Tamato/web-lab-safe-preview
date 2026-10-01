@@ -40,6 +40,7 @@
     iframe { width:100%; height:100%; min-height:420px; display:block; border:1px solid #273244; border-radius:11px; background:#fff; }
     .workspace.game-active .frame-wrap { height:clamp(480px,78vh,900px); min-height:0; background:#030508; }
     .workspace.game-active iframe { min-height:0; height:100%; border-color:#385044; box-shadow:0 0 0 1px rgba(138,245,196,.08),0 28px 80px rgba(0,0,0,.5); }
+    .low-power .workspace.game-active .frame-wrap { height:clamp(420px,62vh,620px); }
     .player-controls { position:absolute; z-index:5; top:24px; right:24px; display:flex; gap:8px; }
     .icon-btn { display:flex; align-items:center; gap:7px; border:1px solid #46566c; border-radius:9px; padding:8px 10px; color:#f4f8fd; background:rgba(7,11,17,.9); font-size:.78rem; font-weight:750; backdrop-filter:blur(10px); }
     .icon-btn:hover { border-color:var(--mint); color:var(--mint); }
@@ -58,6 +59,9 @@
     .library-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:13px; }
     .library-head h2 { margin:0; font-size:1rem; }
     .game-count { color:var(--muted); font-size:.78rem; }
+    .library-tools { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; }
+    .performance-toggle { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:.78rem; white-space:nowrap; }
+    .performance-toggle input { width:16px; height:16px; accent-color:var(--mint); }
     .game-search { display:flex; align-items:center; gap:9px; width:min(460px,100%); background:#080c12; border:1px solid #303b4c; border-radius:10px; padding:0 12px; }
     .game-search:focus-within { border-color:#6ac9a3; box-shadow:0 0 0 3px rgba(138,245,196,.09); }
     .game-grid { max-height:440px; overflow:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:9px; padding:2px 3px 4px 0; scrollbar-color:#3b4a5f #0a0e14; }
@@ -133,7 +137,7 @@
       <section class="game-library" aria-labelledby="gamesHeading">
         <div class="library-head">
           <div><h2 id="gamesHeading">Game library</h2><div class="game-count" id="gameCount">Loading games…</div></div>
-          <label class="game-search"><span aria-hidden="true">⌕</span><input id="gameSearch" type="search" placeholder="Search games" aria-label="Search games"></label>
+          <div class="library-tools"><label class="performance-toggle"><input id="demandingToggle" type="checkbox">Show demanding games</label><label class="game-search"><span aria-hidden="true">⌕</span><input id="gameSearch" type="search" placeholder="Search games" aria-label="Search games"></label></div>
         </div>
         <div class="game-grid" id="gameGrid" aria-live="polite"><div class="library-state">Loading the game list…</div></div>
       </section>
@@ -312,12 +316,21 @@
     const gameGrid = document.querySelector('#gameGrid');
     const gameSearch = document.querySelector('#gameSearch');
     const gameCount = document.querySelector('#gameCount');
+    const demandingToggle = document.querySelector('#demandingToggle');
+    const lowPowerDevice = /CrOS/i.test(navigator.userAgent) || (navigator.deviceMemory && navigator.deviceMemory <= 4) || navigator.hardwareConcurrency <= 4;
+    document.body.classList.toggle('low-power', lowPowerDevice);
+    demandingToggle.checked = !lowPowerDevice;
     let allGames = [];
     let filteredGames = [];
     let renderedGames = 0;
     const pageSize = 80;
 
-    function playGame(game, confirmed = false) {
+    const unloadGame = () => {
+      frame.removeAttribute('srcdoc');
+      frame.src = 'about:blank';
+    };
+
+    async function playGame(game, confirmed = false) {
       if (game.highMemory && !confirmed) {
         const proceed = window.confirm(`${game.name} may use significant memory. Close other heavy tabs before playing. Continue?`);
         if (!proceed) return;
@@ -331,6 +344,8 @@
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
       const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-6`;
       urlInput.value = gameUrl;
+      unloadGame();
+      await new Promise(resolve => setTimeout(resolve, lowPowerDevice ? 180 : 60));
       frame.removeAttribute('srcdoc');
       frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock');
       frame.setAttribute('allow', 'autoplay; fullscreen; gamepad; cross-origin-isolated');
@@ -413,15 +428,18 @@
 
     function filterGames() {
       const query = gameSearch.value.trim().toLowerCase();
-      filteredGames = query ? allGames.filter(game => game.name.toLowerCase().includes(query)) : allGames;
+      const availableGames = demandingToggle.checked ? allGames : allGames.filter(game => !game.highMemory);
+      filteredGames = query ? availableGames.filter(game => game.name.toLowerCase().includes(query)) : availableGames;
       renderedGames = 0;
       gameObserver.disconnect();
       gameGrid.innerHTML = filteredGames.length ? '' : '<div class="library-state">No games match that search.</div>';
-      gameCount.textContent = `${filteredGames.length.toLocaleString()} game${filteredGames.length === 1 ? '' : 's'}`;
+      const hidden = allGames.length - availableGames.length;
+      gameCount.textContent = `${filteredGames.length.toLocaleString()} game${filteredGames.length === 1 ? '' : 's'}${hidden ? ` · ${hidden.toLocaleString()} demanding games hidden for smoother play` : ''}`;
       if (filteredGames.length) renderMoreGames();
     }
 
     gameSearch.addEventListener('input', filterGames);
+    demandingToggle.addEventListener('change', filterGames);
     fetch('/games').then(response => {
       if (!response.ok) throw new Error('Game list unavailable');
       return response.json();
