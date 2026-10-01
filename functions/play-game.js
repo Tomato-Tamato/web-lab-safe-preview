@@ -1,5 +1,6 @@
 const MAX_GAME_BYTES = 24 * 1024 * 1024;
 const BRIDGE_TAG = '<script src="/game-bridge"></script>';
+const FIT_STYLE = '<style id="web-lab-fit">html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#000}body>canvas,body>iframe,#game,#canvas,.game-container{max-width:100%;max-height:100%}canvas{image-rendering:auto}</style>';
 
 function validPath(path) {
   return typeof path === 'string' && path.length <= 240 && /\.html?$/i.test(path) &&
@@ -22,7 +23,8 @@ export async function onRequestGet(context) {
     const length = Number(source.headers.get('content-length') || 0);
     if (length > MAX_GAME_BYTES) return new Response('This game is too large to run on this host.', { status: 413 });
     const html = await source.text();
-    const body = BRIDGE_TAG + html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
+    const cleaned = html.replace(/window\.parent\.maeExportApis_\(\);?/g, '');
+    const body = BRIDGE_TAG + (/<head[\s>]/i.test(cleaned) ? cleaned.replace(/<head([^>]*)>/i, `<head$1>${FIT_STYLE}`) : FIT_STYLE + cleaned);
     return new Response(body, {
       status: 200,
       headers: {

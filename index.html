@@ -38,8 +38,8 @@
     .btn.warning[aria-pressed="true"] { color:#fff; background:#7b2932; border-color:#d9636d; }
     .frame-wrap { position:relative; min-height:420px; padding:12px; background:#0a0e14; transition:.2s ease; }
     iframe { width:100%; height:100%; min-height:420px; display:block; border:1px solid #273244; border-radius:11px; background:#fff; }
-    .workspace.game-active .frame-wrap { min-height:min(72vh,820px); background:#030508; }
-    .workspace.game-active iframe { min-height:min(70vh,790px); border-color:#385044; box-shadow:0 0 0 1px rgba(138,245,196,.08),0 28px 80px rgba(0,0,0,.5); }
+    .workspace.game-active .frame-wrap { height:clamp(480px,78vh,900px); min-height:0; background:#030508; }
+    .workspace.game-active iframe { min-height:0; height:100%; border-color:#385044; box-shadow:0 0 0 1px rgba(138,245,196,.08),0 28px 80px rgba(0,0,0,.5); }
     .player-controls { position:absolute; z-index:5; top:24px; right:24px; display:flex; gap:8px; }
     .icon-btn { display:flex; align-items:center; gap:7px; border:1px solid #46566c; border-radius:9px; padding:8px 10px; color:#f4f8fd; background:rgba(7,11,17,.9); font-size:.78rem; font-weight:750; backdrop-filter:blur(10px); }
     .icon-btn:hover { border-color:var(--mint); color:var(--mint); }
@@ -144,12 +144,12 @@
           <button class="chat-close" id="chatClose" aria-label="Close chat">×</button>
         </div>
         <div class="messages" id="messages" aria-live="polite">
-          <div class="message ai"><div class="eyebrow">Assistant</div>I can help you investigate what you’re viewing. Write a question below and I’ll hand it to ChatGPT in a new tab.</div>
+          <div class="message ai"><div class="eyebrow">Assistant</div>Ask me about the website or game you’re viewing. Your answer will appear here.</div>
         </div>
         <form class="composer" id="chatForm">
           <div class="compose-box">
             <textarea id="question" aria-label="Question for OpenAI" placeholder="Ask a question about this website…" required></textarea>
-            <div class="compose-actions"><span class="hint">Opens ChatGPT securely</span><button class="send" type="submit">Ask ↗</button></div>
+            <div class="compose-actions"><span class="hint">Answers inside Web Lab</span><button class="send" type="submit">Ask</button></div>
           </div>
         </form>
       </aside>
@@ -317,7 +317,11 @@
     let renderedGames = 0;
     const pageSize = 80;
 
-    function playGame(game) {
+    function playGame(game, confirmed = false) {
+      if (game.highMemory && !confirmed) {
+        const proceed = window.confirm(`${game.name} may use significant memory. Close other heavy tabs before playing. Continue?`);
+        if (!proceed) return;
+      }
       proxyMode = false;
       gameMode = true;
       currentGame = game;
@@ -325,7 +329,7 @@
       workspace.classList.add('game-active');
       exportSaveBtn.hidden = importSaveBtn.hidden = false;
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
-      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-5`;
+      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-6`;
       urlInput.value = gameUrl;
       frame.removeAttribute('srcdoc');
       frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock');
@@ -433,17 +437,36 @@
     function setChat(open) { chatPanel.classList.toggle('open', open); chatToggle.setAttribute('aria-expanded', String(open)); if (open) document.querySelector('#question').focus(); }
     chatToggle.addEventListener('click', () => setChat(!chatPanel.classList.contains('open')));
     document.querySelector('#chatClose').addEventListener('click', () => setChat(false));
-    document.querySelector('#chatForm').addEventListener('submit', event => {
+    document.querySelector('#chatForm').addEventListener('submit', async event => {
       event.preventDefault();
       const question = document.querySelector('#question').value.trim();
       if (!question) return;
       let current = urlInput.value.trim();
       try { current = normalizeUrl(current); } catch (_) {}
-      const prompt = `${question}\n\nWebsite I am reviewing: ${current}`;
-      window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank', 'noopener,noreferrer');
-      document.querySelector('#messages').insertAdjacentHTML('beforeend', `<div class="message user"><div class="eyebrow">You</div>${question.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}</div>`);
-      document.querySelector('#question').value = '';
-      showToast('Opening your question in ChatGPT');
+      const messages = document.querySelector('#messages');
+      const escapeHtml = value => value.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+      messages.insertAdjacentHTML('beforeend', `<div class="message user"><div class="eyebrow">You</div>${escapeHtml(question)}</div>`);
+      const pending = document.createElement('div');
+      pending.className = 'message ai';
+      pending.innerHTML = '<div class="eyebrow">Assistant</div>Thinking…';
+      messages.append(pending);
+      messages.scrollTop = messages.scrollHeight;
+      const field = document.querySelector('#question');
+      const send = event.currentTarget.querySelector('.send');
+      field.value = '';
+      field.disabled = send.disabled = true;
+      try {
+        const response = await fetch('/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, page: current }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'The assistant could not answer.');
+        pending.innerHTML = `<div class="eyebrow">Assistant</div>${escapeHtml(result.answer).replace(/\n/g, '<br>')}`;
+      } catch (error) {
+        pending.innerHTML = `<div class="eyebrow">Assistant</div>${escapeHtml(error.message)}`;
+      } finally {
+        field.disabled = send.disabled = false;
+        field.focus();
+        messages.scrollTop = messages.scrollHeight;
+      }
     });
   </script>
 </body>

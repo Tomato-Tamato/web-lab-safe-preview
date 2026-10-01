@@ -1,6 +1,6 @@
 export async function onRequestGet(context) {
   const cache = caches.default;
-  const cacheKey = new Request('https://web-lab.internal/catalog/local-v2');
+  const cacheKey = new Request('https://web-lab.internal/catalog/local-v3');
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
