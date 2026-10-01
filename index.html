@@ -344,10 +344,10 @@
       }
       const gameOrigin = location.origin;
       const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-9`;
-      const launchUrl = `${gameOrigin}/launch-game?path=${encodeURIComponent(game.path)}`;
+      const rawGameUrl = `${gameOrigin}/games/files/${game.path.split('/').map(encodeURIComponent).join('/')}`;
       if (localModeToggle.checked) {
-        showToast(`Caching ${game.name}, then opening it in dedicated mode`);
-        location.assign(`${launchUrl}&standalone=1`);
+        showToast(`Opening ${game.name} in dedicated mode`);
+        location.assign(rawGameUrl);
         return;
       }
       proxyMode = false;
@@ -363,14 +363,14 @@
       frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads');
       frame.setAttribute('allow', 'autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated');
       setFrameLoading(true);
-      frame.src = launchUrl;
+      frame.src = gameUrl;
       modeBtn.textContent = 'Exit game mode';
       modeBtn.setAttribute('aria-pressed', 'false');
       frameStatus.textContent = `Playing ${game.name}`;
       topStatus.textContent = 'Isolated game mode';
       badgeDot.style.background = 'var(--mint)';
       frame.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      showToast(`Downloading ${game.name} for local play`);
+      showToast(`Opening ${game.name}`);
     }
 
     exportSaveBtn.addEventListener('click', () => {
