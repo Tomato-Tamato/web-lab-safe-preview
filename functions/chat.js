@@ -16,9 +16,12 @@ export async function onRequestPost(context) {
         { role: 'system', content: 'You are the concise assistant inside Web Lab. Help with the website or game the user is viewing. Be clear, practical, and honest when you cannot inspect the page contents.' },
         { role: 'user', content: `${question}\n\nCurrent page or game URL: ${page || 'not available'}` }
       ],
-      max_tokens: 500
+      max_completion_tokens: 500,
+      chat_template_kwargs: { enable_thinking: false }
     });
-    const answer = typeof result === 'string' ? result.trim() : String(result?.response || result?.result?.response || '').trim();
+    const answer = typeof result === 'string'
+      ? result.trim()
+      : String(result?.response || result?.result?.response || result?.choices?.[0]?.message?.content || result?.choices?.[0]?.text || '').trim();
     return json({ answer: answer || 'No text response was returned.' });
   } catch (_) {
     return json({ error: 'The free assistant is temporarily unavailable or its daily allowance has been used.' }, 502);
