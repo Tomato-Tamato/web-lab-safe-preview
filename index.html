@@ -347,7 +347,8 @@
       workspace.classList.add('game-active');
       focusGameBtn.hidden = exportSaveBtn.hidden = importSaveBtn.hidden = false;
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
-      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-6`;
+      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-7`;
+      const launchUrl = `${gameOrigin}/launch-game?path=${encodeURIComponent(game.path)}`;
       urlInput.value = gameUrl;
       unloadGame();
       await new Promise(resolve => setTimeout(resolve, lowPowerDevice ? 180 : 60));
@@ -355,14 +356,14 @@
       frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads');
       frame.setAttribute('allow', 'autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated');
       setFrameLoading(true);
-      frame.src = gameUrl;
+      frame.src = launchUrl;
       modeBtn.textContent = 'Exit game mode';
       modeBtn.setAttribute('aria-pressed', 'false');
       frameStatus.textContent = `Playing ${game.name}`;
       topStatus.textContent = 'Isolated game mode';
       badgeDot.style.background = 'var(--mint)';
       frame.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      showToast(`Loading ${game.name}`);
+      showToast(`Downloading ${game.name} for local play`);
     }
 
     exportSaveBtn.addEventListener('click', () => {
