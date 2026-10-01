@@ -127,7 +127,7 @@
           <button class="btn warning" id="modeBtn" aria-pressed="false">Unsandbox</button>
         </div>
         <div class="frame-wrap">
-          <div class="player-controls"><button class="icon-btn save-control" id="exportSaveBtn" type="button" hidden>Export save</button><button class="icon-btn save-control" id="importSaveBtn" type="button" hidden>Import save</button><input id="saveFileInput" type="file" accept="application/json,.json" hidden><button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen"><span aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button></div>
+          <div class="player-controls"><button class="icon-btn save-control" id="focusGameBtn" type="button" hidden>Focus game</button><button class="icon-btn save-control" id="exportSaveBtn" type="button" hidden>Export save</button><button class="icon-btn save-control" id="importSaveBtn" type="button" hidden>Import save</button><input id="saveFileInput" type="file" accept="application/json,.json" hidden><button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen"><span aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button></div>
           <div class="frame-loading" id="frameLoading"><div class="loader">Loading player…</div></div>
           <iframe id="siteFrame" title="Website preview" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation" allow="clipboard-read; clipboard-write; fullscreen; gamepad; autoplay; cross-origin-isolated" referrerpolicy="no-referrer" srcdoc="<!doctype html><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#f3f6f9;color:#1d2733;font:16px system-ui}.c{text-align:center;max-width:420px;padding:32px}h2{font-size:28px;margin:0 0 8px}p{color:#647284;line-height:1.5}</style><div class='c'><h2>Ready to preview</h2><p>Enter a web address above and load it in a restricted frame.</p></div>"></iframe>
           <div class="frame-badge"><span class="status-dot" id="badgeDot"></span><span id="frameStatus">Sandboxed iframe</span></div>
@@ -179,6 +179,7 @@
     const fullscreenLabel = document.querySelector('#fullscreenLabel');
     const exportSaveBtn = document.querySelector('#exportSaveBtn');
     const importSaveBtn = document.querySelector('#importSaveBtn');
+    const focusGameBtn = document.querySelector('#focusGameBtn');
     const saveFileInput = document.querySelector('#saveFileInput');
     const urlInput = document.querySelector('#urlInput');
     const proxyBtn = document.querySelector('#proxyBtn');
@@ -263,7 +264,7 @@
       proxyMode = false;
       gameMode = false;
       workspace.classList.remove('game-active');
-      exportSaveBtn.hidden = importSaveBtn.hidden = true;
+      focusGameBtn.hidden = exportSaveBtn.hidden = importSaveBtn.hidden = true;
       sandboxed = nextSandboxed;
       if (sandboxed) frame.setAttribute('sandbox','allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-top-navigation-by-user-activation'); else frame.removeAttribute('sandbox');
       modeBtn.textContent = sandboxed ? 'Unsandbox' : 'Re-enable sandbox';
@@ -276,7 +277,11 @@
     }
     document.querySelector('#loadBtn').addEventListener('click', loadSite);
     proxyBtn.addEventListener('click', loadProxy);
-    frame.addEventListener('load', () => setFrameLoading(false));
+    frame.addEventListener('load', () => {
+      setFrameLoading(false);
+      if (gameMode) setTimeout(() => { frame.focus(); frame.contentWindow?.focus(); }, 80);
+    });
+    frame.addEventListener('pointerdown', () => { if (gameMode) frame.focus(); });
     fullscreenBtn.addEventListener('click', async () => {
       try {
         if (document.fullscreenElement === frameWrap) await document.exitFullscreen();
@@ -340,15 +345,15 @@
       currentGame = game;
       sandboxed = true;
       workspace.classList.add('game-active');
-      exportSaveBtn.hidden = importSaveBtn.hidden = false;
+      focusGameBtn.hidden = exportSaveBtn.hidden = importSaveBtn.hidden = false;
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
       const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-6`;
       urlInput.value = gameUrl;
       unloadGame();
       await new Promise(resolve => setTimeout(resolve, lowPowerDevice ? 180 : 60));
       frame.removeAttribute('srcdoc');
-      frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock');
-      frame.setAttribute('allow', 'autoplay; fullscreen; gamepad; cross-origin-isolated');
+      frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads');
+      frame.setAttribute('allow', 'autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated');
       setFrameLoading(true);
       frame.src = gameUrl;
       modeBtn.textContent = 'Exit game mode';
@@ -364,6 +369,12 @@
       if (!gameMode) return;
       frame.contentWindow.postMessage({ type: 'web-lab-export-save' }, '*');
       showToast('Preparing save backup…');
+    });
+    focusGameBtn.addEventListener('click', () => {
+      if (!gameMode) return;
+      frame.focus();
+      frame.contentWindow?.focus();
+      showToast('Game focused — try clicking Start or pressing Enter');
     });
     importSaveBtn.addEventListener('click', () => saveFileInput.click());
     saveFileInput.addEventListener('change', async () => {
