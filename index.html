@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Preview a website in a restricted iframe and ask follow-up questions with OpenAI.">
+  <meta name="description" content="Preview a website in a restricted iframe and ask follow-up questions with a built-in AI assistant.">
   <title>Web Lab — Safe site preview</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23070a0f'/%3E%3Cpath d='M18 20h28v24H18z' fill='none' stroke='%238af5c4' stroke-width='5'/%3E%3Cpath d='M18 28h28' stroke='%238af5c4' stroke-width='5'/%3E%3C/svg%3E">
   <style>
@@ -142,9 +142,9 @@
         <div class="game-grid" id="gameGrid" aria-live="polite"><div class="library-state">Loading the game list…</div></div>
       </section>
 
-      <aside class="assistant" id="chatPanel" aria-label="OpenAI question assistant">
+      <aside class="assistant" id="chatPanel" aria-label="AI question assistant">
         <div class="assistant-head">
-          <div class="assistant-title"><span class="openai-glyph" aria-hidden="true">✦</span> Ask OpenAI</div>
+          <div class="assistant-title"><span class="openai-glyph" aria-hidden="true">✦</span> Ask AI</div>
           <button class="chat-close" id="chatClose" aria-label="Close chat">×</button>
         </div>
         <div class="messages" id="messages" aria-live="polite">
@@ -152,14 +152,14 @@
         </div>
         <form class="composer" id="chatForm">
           <div class="compose-box">
-            <textarea id="question" aria-label="Question for OpenAI" placeholder="Ask a question about this website…" required></textarea>
+            <textarea id="question" aria-label="Question for AI" placeholder="Ask a question about this website…" required></textarea>
             <div class="compose-actions"><span class="hint">Answers inside Web Lab</span><button class="send" type="submit">Ask</button></div>
           </div>
         </form>
       </aside>
     </main>
   </div>
-  <button class="chat-toggle" id="chatToggle" aria-expanded="false" aria-controls="chatPanel"><span aria-hidden="true">✦</span> Ask OpenAI</button>
+  <button class="chat-toggle" id="chatToggle" aria-expanded="false" aria-controls="chatPanel"><span aria-hidden="true">✦</span> Ask AI</button>
 
   <dialog id="warningDialog">
     <div class="modal">
