@@ -3,7 +3,7 @@ self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
-  if(event.request.method!=='GET'||url.pathname!=='/play-game')return;
+  if(event.request.method!=='GET'||(url.pathname!=='/play-game'&&!url.pathname.startsWith('/games/files/')))return;
   event.respondWith(caches.open(CACHE_NAME).then(async cache=>{
     const saved=await cache.match(event.request);
     if(saved)return saved;

@@ -11,7 +11,8 @@ export function onRequestGet(context) {
   const path = url.searchParams.get('path');
   if (!validPath(path)) return new Response('Invalid game path.', { status: 400 });
   const standalone = url.searchParams.get('standalone') === '1';
-  const playUrl = `/play-game?path=${encodeURIComponent(path)}&runtime=20260930-8${standalone ? '&standalone=1' : ''}`;
+  const rawPath = '/games/files/' + path.split('/').map(encodeURIComponent).join('/');
+  const playUrl = standalone ? rawPath : `/play-game?path=${encodeURIComponent(path)}&runtime=20260930-9`;
   const body = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preparing game</title>
   <style>html,body{height:100%;margin:0;background:#05080d;color:#eef4fb;font:16px system-ui}body{display:grid;place-items:center}.box{text-align:center;padding:28px}.spin{width:26px;height:26px;margin:0 auto 14px;border:3px solid #314154;border-top-color:#8af5c4;border-radius:50%;animation:s .7s linear infinite}@keyframes s{to{transform:rotate(360deg)}}p{color:#9babc0}</style>
   <div class="box"><div class="spin"></div><strong>Downloading game for local play…</strong><p id="status">Preparing browser storage</p></div>

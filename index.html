@@ -341,7 +341,7 @@
         if (!proceed) return;
       }
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
-      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-8`;
+      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-9`;
       const launchUrl = `${gameOrigin}/launch-game?path=${encodeURIComponent(game.path)}`;
       if (lowPowerDevice && /eaglercraft/i.test(game.path)) {
         showToast('Opening Eaglercraft in dedicated Chromebook mode');
