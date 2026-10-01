@@ -340,15 +340,20 @@
         const proceed = window.confirm(`${game.name} may use significant memory. Close other heavy tabs before playing. Continue?`);
         if (!proceed) return;
       }
+      const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
+      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-8`;
+      const launchUrl = `${gameOrigin}/launch-game?path=${encodeURIComponent(game.path)}`;
+      if (lowPowerDevice && /eaglercraft/i.test(game.path)) {
+        showToast('Opening Eaglercraft in dedicated Chromebook mode');
+        location.assign(`${launchUrl}&standalone=1`);
+        return;
+      }
       proxyMode = false;
       gameMode = true;
       currentGame = game;
       sandboxed = true;
       workspace.classList.add('game-active');
       focusGameBtn.hidden = exportSaveBtn.hidden = importSaveBtn.hidden = false;
-      const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
-      const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-7`;
-      const launchUrl = `${gameOrigin}/launch-game?path=${encodeURIComponent(game.path)}`;
       urlInput.value = gameUrl;
       unloadGame();
       await new Promise(resolve => setTimeout(resolve, lowPowerDevice ? 180 : 60));
