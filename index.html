@@ -137,7 +137,7 @@
       <section class="game-library" aria-labelledby="gamesHeading">
         <div class="library-head">
           <div><h2 id="gamesHeading">Game library</h2><div class="game-count" id="gameCount">Loading games…</div></div>
-          <div class="library-tools"><label class="performance-toggle"><input id="demandingToggle" type="checkbox">Show demanding games</label><label class="game-search"><span aria-hidden="true">⌕</span><input id="gameSearch" type="search" placeholder="Search games" aria-label="Search games"></label></div>
+          <div class="library-tools"><label class="performance-toggle" title="Open the selected game as the whole page after caching its local files. Use your browser Back button to return."><input id="localModeToggle" type="checkbox">Dedicated local mode</label><label class="performance-toggle"><input id="demandingToggle" type="checkbox">Show demanding games</label><label class="game-search"><span aria-hidden="true">⌕</span><input id="gameSearch" type="search" placeholder="Search games" aria-label="Search games"></label></div>
         </div>
         <div class="game-grid" id="gameGrid" aria-live="polite"><div class="library-state">Loading the game list…</div></div>
       </section>
@@ -322,9 +322,11 @@
     const gameSearch = document.querySelector('#gameSearch');
     const gameCount = document.querySelector('#gameCount');
     const demandingToggle = document.querySelector('#demandingToggle');
+    const localModeToggle = document.querySelector('#localModeToggle');
     const lowPowerDevice = /CrOS/i.test(navigator.userAgent) || (navigator.deviceMemory && navigator.deviceMemory <= 4) || navigator.hardwareConcurrency <= 4;
     document.body.classList.toggle('low-power', lowPowerDevice);
     demandingToggle.checked = !lowPowerDevice;
+    localModeToggle.checked = lowPowerDevice;
     let allGames = [];
     let filteredGames = [];
     let renderedGames = 0;
@@ -343,8 +345,8 @@
       const gameOrigin = location.hostname.endsWith('.pages.dev') ? 'https://games-runtime.web-lab-safe-preview-git.pages.dev' : location.origin;
       const gameUrl = `${gameOrigin}/play-game?path=${encodeURIComponent(game.path)}&runtime=20260930-9`;
       const launchUrl = `${gameOrigin}/launch-game?path=${encodeURIComponent(game.path)}`;
-      if (lowPowerDevice && /eaglercraft/i.test(game.path)) {
-        showToast('Opening Eaglercraft in dedicated Chromebook mode');
+      if (localModeToggle.checked) {
+        showToast(`Caching ${game.name}, then opening it in dedicated mode`);
         location.assign(`${launchUrl}&standalone=1`);
         return;
       }
